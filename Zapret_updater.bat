@@ -2,7 +2,7 @@
 chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
 
-title Zapret Updater by Yan4ik000 (v.1.0.0)
+title Zapret Updater by Yan4ik000 (v.1.0.1)
 set "ZAPRET_DIR=%~dp0"
 if "%ZAPRET_DIR:~-1%"=="\" set "ZAPRET_DIR=%ZAPRET_DIR:~0,-1%"
 set "SELF_PATH=%~f0"
