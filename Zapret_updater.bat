@@ -491,7 +491,7 @@ if not exist "%ZAPRET_DIR%\utils\test zapret.ps1" (
     goto manual_select
 )
 call :log "Patching test zapret.ps1..."
-powershell -NoProfile -Command "$f='%ZAPRET_DIR%\utils\test zapret.ps1'; $c=Get-Content -LiteralPath $f -Raw; $c=$c -replace '-notlike .service\*.', '-notlike \"service*\" -and $$_.Name -ne ''%~nx0'''; Set-Content -LiteralPath $f -Value $c -Encoding UTF8"
+powershell -NoProfile -Command "$f='%ZAPRET_DIR%\utils\test zapret.ps1'; $c=Get-Content -LiteralPath $f -Raw; $c=$c -replace '-notlike .service\*.', '-notlike \"service*\" -and $$_.Name -ne ''%~nx0'''; if ($c -notmatch 'IsInputRedirected') { $c=$c -replace '\[void\]\[System\.Console\]::ReadKey\(\$true\)', 'if (-not [System.Console]::IsInputRedirected) { [void][System.Console]::ReadKey($true) }' }; Set-Content -LiteralPath $f -Value $c -Encoding UTF8"
 
 echo %L_TEST_RUN%
 echo %L_TEST_WAIT%
