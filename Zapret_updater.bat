@@ -105,7 +105,7 @@ if /i "!DO_SELF_UPD!"=="y" (
         echo move /y "%SELF_PATH%" "%SELF_PATH%.old" ^>nul
         echo echo Installing new version...
         REM Read downloaded content and write to target file ensuring CRLF and UTF-8
-        echo powershell -NoProfile -Command "Get-Content -LiteralPath '%TEMP_UPDATER%' | Set-Content -LiteralPath '%SELF_PATH%' -Encoding UTF8"
+        echo powershell -NoProfile -Command "Get-Content -LiteralPath '%TEMP_UPDATER%' -Encoding UTF8 | Set-Content -LiteralPath '%SELF_PATH%' -Encoding UTF8"
         echo echo Cleaning up...
         echo if exist "%TEMP_UPDATER%" del /f /q "%TEMP_UPDATER%"
         echo echo Restarting...
@@ -452,7 +452,7 @@ exit /b 0
             )
 
             REM Remove old backups (keep last 3 zip archives) / Удаляю старые бекапы (оставляю 3 последних zip архива)
-            powershell -NoProfile -Command "$limit = 3; $path = '%ZAPRET_DIR%\backups'; if (Test-Path $path) { $items = Get-ChildItem -Path $path -Filter '*.zip' | Sort-Object CreationTime; if ($items.Count -gt $limit) { $items | Select-Object -First ($items.Count - $limit) | ForEach-Object { Write-Host 'Удаляю старый бекап: ' $_.Name; Remove-Item -LiteralPath $_.FullName -Force } } }"
+            powershell -NoProfile -Command "$limit = 3; $path = '%ZAPRET_DIR%\backups'; if (Test-Path $path) { $items = Get-ChildItem -Path $path -Filter '*.zip' | Sort-Object CreationTime; if ($items.Count -gt $limit) { $items | Select-Object -First ($items.Count - $limit) | ForEach-Object { Write-Host 'РЈРґР°Р»СЏСЋ СЃС‚Р°СЂС‹Р№ Р±РµРєР°Рї: ' $_.Name; Remove-Item -LiteralPath $_.FullName -Force } } }"
         ) else (
             call :log "User declined backup."
         )
@@ -472,7 +472,7 @@ exit /b 0
         "        $srcFile = $_.FullName;" ^
         "        $dstFile = Join-Path $dst $fName;" ^
         "        if (Test-Path $dstFile) {" ^
-        "            Write-Host 'Объединяю' $fName '...';" ^
+        "            Write-Host 'РћР±СЉРµРґРёРЅСЏСЋ' $fName '...';" ^
         "            $c1 = @(Get-Content -LiteralPath $dstFile -Encoding UTF8 -ErrorAction SilentlyContinue);" ^
         "            $c2 = @(Get-Content -LiteralPath $srcFile -Encoding UTF8 -ErrorAction SilentlyContinue);" ^
         "            $merged = ($c1 + $c2) | Select-Object -Unique | Sort-Object;" ^
