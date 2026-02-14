@@ -97,15 +97,18 @@ set /p "DO_SELF_UPD=Обновить скрипт? / Update script? (y/n): "
 if /i "!DO_SELF_UPD!"=="y" (
     call :log "Updating updater script to v!REMOTE_UPDATER_VER!..."
     
-    REM Ensure CRLF line endings using PowerShell
-    powershell -NoProfile -Command "(Get-Content -LiteralPath '%TEMP_UPDATER%') | Set-Content -LiteralPath '%TEMP_UPDATER%' -Encoding UTF8"
-
     set "UPDATE_RUNNER=%TEMP%\zapret_update_runner.bat"
     (
         echo @echo off
         echo timeout /t 2 /nobreak ^>nul
+        echo echo Backing up old version...
         echo move /y "%SELF_PATH%" "%SELF_PATH%.old" ^>nul
-        echo move /y "%TEMP_UPDATER%" "%SELF_PATH%" ^>nul
+        echo echo Installing new version...
+        REM Read downloaded content and write to target file ensuring CRLF and UTF-8
+        echo powershell -NoProfile -Command "Get-Content -LiteralPath '%TEMP_UPDATER%' | Set-Content -LiteralPath '%SELF_PATH%' -Encoding UTF8"
+        echo echo Cleaning up...
+        echo if exist "%TEMP_UPDATER%" del /f /q "%TEMP_UPDATER%"
+        echo echo Restarting...
         echo start "" "%SELF_PATH%"
         echo del "%%~f0"
     ) > "!UPDATE_RUNNER!"
