@@ -2,7 +2,7 @@
 cd /d "%~dp0"
 chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
-set "UPDATER_VERSION=1.1.1"
+set "UPDATER_VERSION=1.1.2"
 title Zapret Updater by Yan4ik000 (v.%UPDATER_VERSION%)
 set "ZAPRET_DIR=%~dp0"
 if "%ZAPRET_DIR:~-1%"=="\" set "ZAPRET_DIR=%ZAPRET_DIR:~0,-1%"
