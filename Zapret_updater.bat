@@ -6,6 +6,14 @@ set "UPDATER_VERSION=1.1.1"
 title Zapret Updater by Yan4ik000 (v.%UPDATER_VERSION%)
 set "ZAPRET_DIR=%~dp0"
 if "%ZAPRET_DIR:~-1%"=="\" set "ZAPRET_DIR=%ZAPRET_DIR:~0,-1%"
+
+:: Define ANSI Colors / Определяю цвета ANSI
+for /F "tokens=1,2 delims=#" %%a in ('"prompt #$H#$E# & echo on & for %%b in (1) do rem"') do set "ESC=%%b"
+set "C_R=%ESC%[91m"
+set "C_G=%ESC%[92m"
+set "C_Y=%ESC%[93m"
+set "C_N=%ESC%[0m"
+
 set "SELF_PATH=%~f0"
 set "TARGET_BAT="
 set "TEMP_DIR=%TEMP%\zapret_update"
@@ -23,7 +31,6 @@ if exist "%LOG_FILE%" del /f /q "%LOG_FILE%"
 
 :: Cleanup old update backup / Удаление старого бекапа обновления
 if exist "%SELF_PATH%.old" del /f /q "%SELF_PATH%.old"
-if exist "%TEMP%\zapret_update_runner.bat" del /f /q "%TEMP%\zapret_update_runner.bat"
 
 call :log "Script started. Path: %SELF_PATH%"
 
@@ -49,6 +56,11 @@ if %errorlevel% neq 0 (
 
 REM === SELF-UPDATE CHECK / ПРОВЕРКА ОБНОВЛЕНИЙ СКРИПТА ===
 call :log "Checking for updater updates..."
+ping -n 1 -w 1500 8.8.8.8 >nul 2>&1
+if %errorlevel% neq 0 (
+    call :log "No internet connection. Skipping self-update."
+    goto skip_self_update
+)
 set "UPDATER_URL=https://raw.githubusercontent.com/Yan4ik000/Zapret-updater/main/Zapret_updater.bat"
 set "TEMP_UPDATER=%TEMP%\Zapret_updater_new.bat"
 
@@ -114,7 +126,7 @@ if /i "!DO_SELF_UPD!"=="y" (
         echo powershell -NoProfile -Command "$enc=New-Object System.Text.UTF8Encoding $False; $c=Get-Content -LiteralPath '%TEMP_UPDATER%' -Encoding UTF8; [System.IO.File]::WriteAllLines('%SELF_PATH%', $c, $enc)"
         echo if exist "%TEMP_UPDATER%" del /f /q "%TEMP_UPDATER%"
         echo start "" "%SELF_PATH%"
-        echo exit
+        echo ^(goto^) 2^>nul ^& del "%%~f0"
     ) > "!UPDATE_RUNNER!"
     
     start /min "" "!UPDATE_RUNNER!"
@@ -164,8 +176,9 @@ set "L_MENU_HEADER=Select action:"
 set "L_MENU_1=1. Use last configuration"
 set "L_MENU_2=2. Auto-test and select best config"
 set "L_MENU_3=3. Select configuration manually"
-set "L_MENU_4=4. Exit"
-set "L_MENU_CHOICE=Your choice? (1-4): "
+set "L_MENU_4=4. Uninstall Service"
+set "L_MENU_5=5. Exit"
+set "L_MENU_CHOICE=Your choice? (1-5): "
 set "L_ERR_LAST_CONF=[ERROR] Last configuration not defined."
 set "L_AVAIL_CONFS=Available configurations:"
 set "L_ENTER_NUM=Enter configuration number: "
@@ -182,6 +195,8 @@ set "L_DONE=Done."
 set "L_EXIT=Press any key to exit..."
 set "L_FAIL_STEP=[ERROR] Update failed at step:"
 set "L_FAIL_CODE=[ERROR] Error code:"
+set "L_UNINSTALL_CONFIRM=Are you sure you want to remove the Zapret service and firewall rules? (y/n): "
+set "L_UNINSTALL_DONE=Service and firewall rules removed."
 goto main_logic
 
 :lang_ru
@@ -211,8 +226,9 @@ set "L_MENU_HEADER=Выбери:"
 set "L_MENU_1=1. Использовать последнюю конфигурацию"
 set "L_MENU_2=2. Автоматический тест и выбор лучшей конфигурации"
 set "L_MENU_3=3. Выбрать конфигурацию вручную"
-set "L_MENU_4=4. Выход"
-set "L_MENU_CHOICE=Твой выбор? (1-4): "
+set "L_MENU_4=4. Удалить службу"
+set "L_MENU_5=5. Выход"
+set "L_MENU_CHOICE=Твой выбор? (1-5): "
 set "L_ERR_LAST_CONF=[ОШИБКА] Последняя конфигурация не определена."
 set "L_AVAIL_CONFS=Доступные конфигурации:"
 set "L_ENTER_NUM=Введите номер конфигурации: "
@@ -229,6 +245,8 @@ set "L_DONE=Готово."
 set "L_EXIT=Нажми любую клавишу для выхода..."
 set "L_FAIL_STEP=[ОШИБКА] Обновление не удалось на этапе:"
 set "L_FAIL_CODE=[ОШИБКА] Код ошибки:"
+set "L_UNINSTALL_CONFIRM=Вы уверены, что хотите удалить службу Zapret и правила брандмауэра? (y/n): "
+set "L_UNINSTALL_DONE=Служба и правила брандмауэра удалены."
 goto main_logic
 
 :main_logic
@@ -265,6 +283,12 @@ REM ============================================================================
 :check_updates_logic
 :: Get latest release info (zip archive) / Получаю информацию о последнем релизе (zip-архив)
 call :log "Checking for updates..."
+ping -n 1 -w 1500 8.8.8.8 >nul 2>&1
+if %errorlevel% neq 0 (
+    call :log "No internet connection. Skipping GitHub check."
+    set "REMOTE_VERSION="
+    goto skip_fetch
+)
 set "REMOTE_VERSION="
 set "ASSET_NAME="
 set "ASSET_URL="
@@ -278,6 +302,7 @@ if errorlevel 1 (
     call :log "Warning: Failed to fetch release info from GitHub."
     set "REMOTE_VERSION="
 )
+:skip_fetch
 
 if defined REMOTE_VERSION (
     if not defined ASSET_NAME set "REMOTE_VERSION="
@@ -423,6 +448,8 @@ sc stop "WinDivert" >nul 2>&1
 sc delete "WinDivert" >nul 2>&1
 sc stop "WinDivert14" >nul 2>&1
 sc delete "WinDivert14" >nul 2>&1
+:: Remove firewall rules / Удаляю правила брандмауэра
+netsh advfirewall firewall delete rule name="Zapret (winws)" >nul 2>&1
 call :log "Services stopped and removed."
 exit /b 0
 
@@ -529,6 +556,7 @@ if defined CURRENT_STRATEGY (
     echo %L_MENU_2%
     echo %L_MENU_3%
     echo %L_MENU_4%
+    echo %L_MENU_5%
     echo.
     set "choice_conf="
     set /p "choice_conf=%L_MENU_CHOICE%"
@@ -536,18 +564,21 @@ if defined CURRENT_STRATEGY (
     if "!choice_conf!"=="1" goto use_last
     if "!choice_conf!"=="2" goto auto_test
     if "!choice_conf!"=="3" goto manual_select
-    if "!choice_conf!"=="4" exit /b 0
+    if "!choice_conf!"=="4" goto uninstall_zapret
+    if "!choice_conf!"=="5" exit /b 0
 ) else (
     echo 1. %L_MENU_2:~3%
     echo 2. %L_MENU_3:~3%
     echo 3. %L_MENU_4:~3%
+    echo 4. %L_MENU_5:~3%
     echo.
     set "choice_conf="
-    set /p "choice_conf=%L_MENU_CHOICE:~0,-7%(1-3): "
+    set /p "choice_conf=%L_MENU_CHOICE:~0,-7%(1-4): "
     call :log "User menu choice: !choice_conf!"
     if "!choice_conf!"=="1" goto auto_test
     if "!choice_conf!"=="2" goto manual_select
-    if "!choice_conf!"=="3" exit /b 0
+    if "!choice_conf!"=="3" goto uninstall_zapret
+    if "!choice_conf!"=="4" exit /b 0
 )
 goto select_config
 
@@ -616,6 +647,16 @@ if defined BEST_CONF (
 echo %L_ERR_CONF_FAIL%
 call :log "Error: Failed to determine best configuration."
 goto manual_select
+
+:uninstall_zapret
+echo.
+set "DO_UNINST="
+set /p "DO_UNINST=%L_UNINSTALL_CONFIRM%"
+if /i not "!DO_UNINST!"=="y" goto select_config
+call :cleanup_services
+call :PrintGreen "%L_UNINSTALL_DONE%"
+pause
+goto select_config
 
 :install_service
 :: Collect arguments from target .bat / Собираю аргументы из целевого .bat
@@ -768,6 +809,11 @@ for %%F in ("%selectedFile%") do set "filename=%%~nF"
 reg add "HKLM\System\CurrentControlSet\Services\zapret" /v zapret-discord-youtube /t REG_SZ /d "!filename!" /f
 call :log "Registry updated with strategy: !filename!"
 
+:: Add firewall rules / Добавляю правила брандмауэра
+call :log "Adding firewall rules..."
+netsh advfirewall firewall add rule name="Zapret (winws)" dir=in action=allow program="%BIN_PATH%winws.exe" enable=yes >nul 2>&1
+netsh advfirewall firewall add rule name="Zapret (winws)" dir=out action=allow program="%BIN_PATH%winws.exe" enable=yes >nul 2>&1
+
 if exist "%TEMP_DIR%" rd /s /q "%TEMP_DIR%"
 call :log "Temp directory cleaned."
 
@@ -787,18 +833,15 @@ pause >nul
 exit /b %RC%
 
 :PrintGreen
-set "MSG=%~1"
-powershell -NoProfile -Command "Write-Host $env:MSG -ForegroundColor Green"
+echo %C_G%%~1%C_N%
 exit /b
 
 :PrintRed
-set "MSG=%~1"
-powershell -NoProfile -Command "Write-Host $env:MSG -ForegroundColor Red"
+echo %C_R%%~1%C_N%
 exit /b
 
 :PrintYellow
-set "MSG=%~1"
-powershell -NoProfile -Command "Write-Host $env:MSG -ForegroundColor Yellow"
+echo %C_Y%%~1%C_N%
 exit /b
 
 :log
