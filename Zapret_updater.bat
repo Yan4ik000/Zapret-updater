@@ -101,19 +101,15 @@ if /i "!DO_SELF_UPD!"=="y" (
     (
         echo @echo off
         echo timeout /t 2 /nobreak ^>nul
-        echo echo Backing up old version...
         echo move /y "%SELF_PATH%" "%SELF_PATH%.old" ^>nul
-        echo echo Installing new version...
-        REM Read downloaded content and write to target file ensuring CRLF and UTF-8
-        echo powershell -NoProfile -Command "Get-Content -LiteralPath '%TEMP_UPDATER%' -Encoding UTF8 | Set-Content -LiteralPath '%SELF_PATH%' -Encoding UTF8"
-        echo echo Cleaning up...
+        REM Write file without BOM to prevent 'echo off' failure
+        echo powershell -NoProfile -Command "$enc=New-Object System.Text.UTF8Encoding $False; [System.IO.File]::WriteAllLines('%SELF_PATH%', (Get-Content -LiteralPath '%TEMP_UPDATER%' -Encoding UTF8), $enc)"
         echo if exist "%TEMP_UPDATER%" del /f /q "%TEMP_UPDATER%"
-        echo echo Restarting...
         echo start "" "%SELF_PATH%"
         echo del "%%~f0"
     ) > "!UPDATE_RUNNER!"
     
-    start "" "!UPDATE_RUNNER!"
+    start /min "" "!UPDATE_RUNNER!"
     exit
 )
 call :log "User declined updater update."
