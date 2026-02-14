@@ -23,6 +23,7 @@ if exist "%LOG_FILE%" del /f /q "%LOG_FILE%"
 
 :: Cleanup old update backup / Удаление старого бекапа обновления
 if exist "%SELF_PATH%.old" del /f /q "%SELF_PATH%.old"
+if exist "%TEMP%\zapret_update_runner.bat" del /f /q "%TEMP%\zapret_update_runner.bat"
 
 call :log "Script started. Path: %SELF_PATH%"
 
@@ -113,7 +114,7 @@ if /i "!DO_SELF_UPD!"=="y" (
         echo powershell -NoProfile -Command "$enc=New-Object System.Text.UTF8Encoding $False; $c=Get-Content -LiteralPath '%TEMP_UPDATER%' -Encoding UTF8; [System.IO.File]::WriteAllLines('%SELF_PATH%', $c, $enc)"
         echo if exist "%TEMP_UPDATER%" del /f /q "%TEMP_UPDATER%"
         echo start "" "%SELF_PATH%"
-        echo ^(goto^) 2^>nul ^& del "%%~f0"
+        echo exit
     ) > "!UPDATE_RUNNER!"
     
     start /min "" "!UPDATE_RUNNER!"
