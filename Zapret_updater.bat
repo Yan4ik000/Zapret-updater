@@ -1,7 +1,6 @@
 @echo off
 chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
-:: THIS COMMIT ONLY FOR TEST FUNCTION DO NOT INSTALLING THIS VERSION
 set "UPDATER_VERSION=1.1"
 title Zapret Updater by Yan4ik000 (v.%UPDATER_VERSION%)
 set "ZAPRET_DIR=%~dp0"
@@ -21,9 +20,9 @@ set "LOG_FILE=%ZAPRET_DIR%\update_debug.log"
 :: Clear old log / Очистка старого лога
 if exist "%LOG_FILE%" del /f /q "%LOG_FILE%"
 
-call :log "Script started. Path: %SELF_PATH%"
+call :log "Script started. Path: %фSELF_PATH%"
 
-:: === SELF-UPDATE CHECK / ПРОВЕРКА ОБНОВЛЕНИЙ СКРИПТА ===
+REM === SELF-UPDATE CHECK / ПРОВЕРКА ОБНОВЛЕНИЙ СКРИПТА ===
 call :log "Checking for updater updates..."
 set "UPDATER_URL=https://raw.githubusercontent.com/Yan4ik000/Zapret-updater/main/Zapret_updater.bat"
 set "TEMP_UPDATER=%TEMP%\Zapret_updater_new.bat"
@@ -73,12 +72,19 @@ set "DO_SELF_UPD="
 set /p "DO_SELF_UPD=Обновить скрипт? / Update script? (y/n): "
 if /i "!DO_SELF_UPD!"=="y" (
     call :log "Updating updater script to v!REMOTE_UPDATER_VER!..."
-    move /y "%SELF_PATH%" "%SELF_PATH%.bak" >nul
-    move /y "%TEMP_UPDATER%" "%SELF_PATH%" >nul
-    echo Скрипт обновлен. Перезапуск...
-    echo Script updated. Restarting...
-    timeout /t 2 >nul
-    start "" "%SELF_PATH%"
+    
+    set "UPDATE_RUNNER=%TEMP%\zapret_update_runner.bat"
+    (
+        echo @echo off
+        echo timeout /t 2 /nobreak ^>nul
+        echo echo Updating file...
+        echo powershell -NoProfile -Command "$u=New-Object System.Text.UTF8Encoding $False; [System.IO.File]::WriteAllLines('%SELF_PATH%', (Get-Content -LiteralPath '%TEMP_UPDATER%'), $u)"
+        echo echo Update complete. Restarting...
+        echo start "" "%SELF_PATH%"
+        echo del "%%~f0"
+    ) > "!UPDATE_RUNNER!"
+    
+    start "" "!UPDATE_RUNNER!"
     exit
 )
 call :log "User declined updater update."
