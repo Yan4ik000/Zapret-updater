@@ -2,7 +2,7 @@
 cd /d "%~dp0"
 chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
-set "UPDATER_VERSION=1.1"
+set "UPDATER_VERSION=1.1.1"
 title Zapret Updater by Yan4ik000 (v.%UPDATER_VERSION%)
 set "ZAPRET_DIR=%~dp0"
 if "%ZAPRET_DIR:~-1%"=="\" set "ZAPRET_DIR=%ZAPRET_DIR:~0,-1%"
@@ -60,6 +60,13 @@ if %errorlevel% equ 0 (
 
 if exist "%TEMP_UPDATER%" (
     call :log "Updater update file downloaded."
+    REM Basic integrity check (header verification)
+    findstr /c:"Zapret Updater" "%TEMP_UPDATER%" >nul
+    if errorlevel 1 (
+        call :log "Error: Downloaded file is corrupted or invalid."
+        del /f /q "%TEMP_UPDATER%"
+        goto skip_self_update
+    )
     set "REMOTE_UPDATER_VER="
     for /f "tokens=2 delims==" %%A in ('findstr /r "^set.*UPDATER_VERSION=" "%TEMP_UPDATER%"') do set "REMOTE_UPDATER_VER=%%A"
     if defined REMOTE_UPDATER_VER (
@@ -103,10 +110,10 @@ if /i "!DO_SELF_UPD!"=="y" (
         echo timeout /t 2 /nobreak ^>nul
         echo move /y "%SELF_PATH%" "%SELF_PATH%.old" ^>nul
         REM Write file without BOM to prevent 'echo off' failure
-        echo powershell -NoProfile -Command "$enc=New-Object System.Text.UTF8Encoding $False; [System.IO.File]::WriteAllLines('%SELF_PATH%', (Get-Content -LiteralPath '%TEMP_UPDATER%' -Encoding UTF8), $enc)"
+        echo powershell -NoProfile -Command "$enc=New-Object System.Text.UTF8Encoding $False; $c=Get-Content -LiteralPath '%TEMP_UPDATER%' -Encoding UTF8; [System.IO.File]::WriteAllLines('%SELF_PATH%', $c, $enc)"
         echo if exist "%TEMP_UPDATER%" del /f /q "%TEMP_UPDATER%"
         echo start "" "%SELF_PATH%"
-        echo del "%%~f0"
+        echo ^(goto^) 2^>nul ^& del "%%~f0"
     ) > "!UPDATE_RUNNER!"
     
     start /min "" "!UPDATE_RUNNER!"
