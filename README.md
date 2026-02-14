@@ -43,8 +43,6 @@ The script handles all the routine tasks: downloading new versions, creating bac
     *   The script must reside in the root to correctly locate the `bin` folder with the `winws.exe` executable.
 3.  **Do not manually delete the `backups` folder while the script is running**.
     *   This may lead to errors when attempting to create or restore a backup.
-4.  **Do not run the script from inside an archive**.
-    *   Extract it to the Zapret folder first.
 
 ### Action Menu
 
@@ -118,8 +116,6 @@ The log will be written to the `update_debug.log` file.
     *   Скрипт должен лежать в корне, чтобы правильно находить папку `bin` с исполняемым файлом `winws.exe`.
 3.  **Не удаляйте папку `backups` вручную во время работы скрипта**.
     *   Это может привести к ошибкам при попытке создания или восстановления резервной копии.
-4.  **Не запускайте скрипт из архива**.
-    *   Сначала распакуйте его в папку с Zapret.
 
 ### Меню действий
 
