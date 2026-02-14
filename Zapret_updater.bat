@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
 set "UPDATER_VERSION=1.1"
@@ -20,7 +21,30 @@ set "LOG_FILE=%ZAPRET_DIR%\update_debug.log"
 :: Clear old log / Очистка старого лога
 if exist "%LOG_FILE%" del /f /q "%LOG_FILE%"
 
-call :log "Script started. Path: %фSELF_PATH%"
+:: Cleanup old update backup / Удаление старого бекапа обновления
+if exist "%SELF_PATH%.old" del /f /q "%SELF_PATH%.old"
+
+call :log "Script started. Path: %SELF_PATH%"
+
+:: Require admin rights / Требую права администратора
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    call :log "Admin rights missing. Requesting elevation."
+    set "SELF_PATH=%~f0"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList @('/k',([char]34 + $env:SELF_PATH + [char]34)) -Verb RunAs"
+    exit /b
+)
+call :log "Admin rights confirmed."
+
+:: Check PowerShell version / Проверяю версию PowerShell
+powershell -NoProfile -Command "if ($PSVersionTable.PSVersion.Major -ge 5) { exit 0 } else { exit 1 }" >nul 2>&1
+if %errorlevel% neq 0 (
+    call :log "Error: PowerShell 5.0+ required."
+    echo [ERROR] PowerShell 5.0 or higher is required for this script.
+    echo Please install Windows Management Framework 5.1.
+    pause
+    exit /b 1
+)
 
 REM === SELF-UPDATE CHECK / ПРОВЕРКА ОБНОВЛЕНИЙ СКРИПТА ===
 call :log "Checking for updater updates..."
@@ -73,13 +97,15 @@ set /p "DO_SELF_UPD=Обновить скрипт? / Update script? (y/n): "
 if /i "!DO_SELF_UPD!"=="y" (
     call :log "Updating updater script to v!REMOTE_UPDATER_VER!..."
     
+    REM Ensure CRLF line endings using PowerShell
+    powershell -NoProfile -Command "(Get-Content -LiteralPath '%TEMP_UPDATER%') | Set-Content -LiteralPath '%TEMP_UPDATER%' -Encoding UTF8"
+
     set "UPDATE_RUNNER=%TEMP%\zapret_update_runner.bat"
     (
         echo @echo off
         echo timeout /t 2 /nobreak ^>nul
-        echo echo Updating file...
-        echo powershell -NoProfile -Command "$u=New-Object System.Text.UTF8Encoding $False; [System.IO.File]::WriteAllLines('%SELF_PATH%', (Get-Content -LiteralPath '%TEMP_UPDATER%'), $u)"
-        echo echo Update complete. Restarting...
+        echo move /y "%SELF_PATH%" "%SELF_PATH%.old" ^>nul
+        echo move /y "%TEMP_UPDATER%" "%SELF_PATH%" ^>nul
         echo start "" "%SELF_PATH%"
         echo del "%%~f0"
     ) > "!UPDATE_RUNNER!"
@@ -91,26 +117,6 @@ call :log "User declined updater update."
 if exist "%TEMP_UPDATER%" del /f /q "%TEMP_UPDATER%"
 
 :skip_self_update
-
-:: Require admin rights / Требую права администратора
-net session >nul 2>&1
-if %errorlevel% neq 0 (
-    call :log "Admin rights missing. Requesting elevation."
-    set "SELF_PATH=%~f0"
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList @('/k',([char]34 + $env:SELF_PATH + [char]34)) -Verb RunAs"
-    exit /b
-)
-call :log "Admin rights confirmed."
-
-:: Check PowerShell version / Проверяю версию PowerShell
-powershell -NoProfile -Command "if ($PSVersionTable.PSVersion.Major -ge 5) { exit 0 } else { exit 1 }" >nul 2>&1
-if %errorlevel% neq 0 (
-    call :log "Error: PowerShell 5.0+ required."
-    echo [ERROR] PowerShell 5.0 or higher is required for this script.
-    echo Please install Windows Management Framework 5.1.
-    pause
-    exit /b 1
-)
 
 :: === LANGUAGE SELECTION / ВЫБОР ЯЗЫКА===
 set "SYS_LANG=en"
