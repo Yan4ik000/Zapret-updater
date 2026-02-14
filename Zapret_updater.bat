@@ -15,7 +15,7 @@ set "STEP=init"
 set "BACKUP_FILE="
 
 :: === LOGGING SETTINGS / НАСТРОЙКИ ЛОГИРОВАНИЯ ===
-set "ENABLE_LOGGING=1"
+set "ENABLE_LOGGING=0"
 set "LOG_FILE=%ZAPRET_DIR%\update_debug.log"
 
 :: Clear old log / Очистка старого лога
