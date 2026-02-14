@@ -1,8 +1,9 @@
 @echo off
 chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
-
-title Zapret Updater by Yan4ik000 (v.1.0.1)
+:: THIS COMMIT ONLY FOR TEST FUNCTION DO NOT INSTALLING THIS VERSION
+set "UPDATER_VERSION=1.1"
+title Zapret Updater by Yan4ik000 (v.%UPDATER_VERSION%)
 set "ZAPRET_DIR=%~dp0"
 if "%ZAPRET_DIR:~-1%"=="\" set "ZAPRET_DIR=%ZAPRET_DIR:~0,-1%"
 set "SELF_PATH=%~f0"
@@ -14,17 +15,83 @@ set "STEP=init"
 set "BACKUP_FILE="
 
 :: === LOGGING SETTINGS / НАСТРОЙКИ ЛОГИРОВАНИЯ ===
-set "ENABLE_LOGGING=0"
+set "ENABLE_LOGGING=1"
 set "LOG_FILE=%ZAPRET_DIR%\update_debug.log"
 
+:: Clear old log / Очистка старого лога
+if exist "%LOG_FILE%" del /f /q "%LOG_FILE%"
+
 call :log "Script started. Path: %SELF_PATH%"
+
+:: === SELF-UPDATE CHECK / ПРОВЕРКА ОБНОВЛЕНИЙ СКРИПТА ===
+call :log "Checking for updater updates..."
+set "UPDATER_URL=https://raw.githubusercontent.com/Yan4ik000/Zapret-updater/main/Zapret_updater.bat"
+set "TEMP_UPDATER=%TEMP%\Zapret_updater_new.bat"
+
+where curl >nul 2>&1
+if %errorlevel% equ 0 (
+    curl -L -s -o "%TEMP_UPDATER%" "%UPDATER_URL%"
+) else (
+    powershell -NoProfile -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%UPDATER_URL%' -OutFile '%TEMP_UPDATER%' -UseBasicParsing } catch {}"
+)
+
+if exist "%TEMP_UPDATER%" (
+    call :log "Updater update file downloaded."
+    set "REMOTE_UPDATER_VER="
+    for /f "tokens=2 delims==" %%A in ('findstr /r "^set.*UPDATER_VERSION=" "%TEMP_UPDATER%"') do set "REMOTE_UPDATER_VER=%%A"
+    if defined REMOTE_UPDATER_VER (
+        set "REMOTE_UPDATER_VER=!REMOTE_UPDATER_VER:"=!"
+        call :log "Remote updater version: !REMOTE_UPDATER_VER!"
+        if not "!REMOTE_UPDATER_VER!"=="%UPDATER_VERSION%" (
+            goto found_update
+        ) else (
+            call :log "Updater is up to date."
+        )
+    ) else (
+        call :log "Failed to parse remote updater version."
+    )
+    del /f /q "%TEMP_UPDATER%"
+) else (
+    call :log "Failed to download updater update."
+)
+goto skip_self_update
+
+:found_update
+cls
+call :PrintYellow "========================================================"
+call :PrintYellow "   ДОСТУПНО ОБНОВЛЕНИЕ САМОГО СКРИПТА (v!REMOTE_UPDATER_VER!)"
+call :PrintYellow "   RECOMMENDED UPDATE FOR UPDATER SCRIPT (v!REMOTE_UPDATER_VER!)"
+call :PrintYellow "========================================================"
+echo.
+echo Текущая версия / Current version: %UPDATER_VERSION%
+echo Новая версия / New version: !REMOTE_UPDATER_VER!
+echo.
+echo [!] Рекомендуется обновить скрипт для получения новых функций и исправлений.
+echo [!] It is recommended to update the script for new features and fixes.
+echo.
+set "DO_SELF_UPD="
+set /p "DO_SELF_UPD=Обновить скрипт? / Update script? (y/n): "
+if /i "!DO_SELF_UPD!"=="y" (
+    call :log "Updating updater script to v!REMOTE_UPDATER_VER!..."
+    move /y "%SELF_PATH%" "%SELF_PATH%.bak" >nul
+    move /y "%TEMP_UPDATER%" "%SELF_PATH%" >nul
+    echo Скрипт обновлен. Перезапуск...
+    echo Script updated. Restarting...
+    timeout /t 2 >nul
+    start "" "%SELF_PATH%"
+    exit
+)
+call :log "User declined updater update."
+if exist "%TEMP_UPDATER%" del /f /q "%TEMP_UPDATER%"
+
+:skip_self_update
 
 :: Require admin rights / Требую права администратора
 net session >nul 2>&1
 if %errorlevel% neq 0 (
     call :log "Admin rights missing. Requesting elevation."
     set "SELF_PATH=%~f0"
-    powershell -NoProfile -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList @('/k',([char]34 + $env:SELF_PATH + [char]34)) -Verb RunAs"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList @('/k',([char]34 + $env:SELF_PATH + [char]34)) -Verb RunAs"
     exit /b
 )
 call :log "Admin rights confirmed."
@@ -62,7 +129,7 @@ set "L_UPDATE_ASK=Update now? (y/n): "
 set "L_SKIP=Skipping update. Proceeding to settings..."
 set "L_NO_UPDATE=Version is up to date."
 set "L_FORCE_ASK=Configure current version? (y/n): "
-set "L_LOCAL_MISSING=Local files missing. Proceeding with full download."
+set "L_INSTALL_ASK=Local files missing. Install Zapret now? (y/n): "
 set "L_SETUP_CUR=Configuring current version"
 set "L_INSTALLING=Installing version"
 set "L_BACKUP_ASK=Create backup? (y/n): "
@@ -109,7 +176,7 @@ set "L_UPDATE_ASK=Обновить сейчас? (y/n): "
 set "L_SKIP=Пропускаю обновление. Переход к настройкам..."
 set "L_NO_UPDATE=Версия актуальна."
 set "L_FORCE_ASK=Настроить текущую версию? (y/n): "
-set "L_LOCAL_MISSING=Локальные файлы отсутствуют. Продолжаю полную загрузку."
+set "L_INSTALL_ASK=Локальные файлы отсутствуют. Установить Zapret сейчас? (y/n): "
 set "L_SETUP_CUR=Настройка текущей версии"
 set "L_INSTALLING=Устанавливаю версию"
 set "L_BACKUP_ASK=Хочешь создать резервную копию? (y/n): "
@@ -172,9 +239,9 @@ if "%SKIP_DOWNLOAD%"=="0" (
 
 goto select_config
 
-:: ============================================================================
-:: FUNCTIONS / ФУНКЦИИ
-:: ============================================================================
+REM ============================================================================
+REM FUNCTIONS / ФУНКЦИИ
+REM ============================================================================
 
 :check_updates_logic
 :: Get latest release info (zip archive) / Получаю информацию о последнем релизе (zip-архив)
@@ -200,10 +267,9 @@ if defined REMOTE_VERSION (
 
 if not defined REMOTE_VERSION (
     call :PrintRed "%L_ERR_GITHUB%"
-    call :log "Offline mode. Exiting."
-    echo %L_EXIT%
-    pause >nul
-    set "EXIT_APP=1"
+    call :log "Offline mode. Proceeding with local version."
+    echo [WARNING] GitHub unreachable. Proceeding with local version...
+    set "SKIP_DOWNLOAD=1"
     exit /b 0
 ) else (
     if /i "!REMOTE_VERSION:~0,1!"=="v" set "REMOTE_VERSION=!REMOTE_VERSION:~1!"
@@ -230,9 +296,15 @@ if defined LOCAL_VERSION (
 
 :: Check for missing files / Проверяю наличие файлов
 if not exist "%ZAPRET_DIR%\bin\winws.exe" (
-    echo %L_LOCAL_MISSING%
-    call :log "Local files missing. Forcing download."
-    set "SKIP_DOWNLOAD=0"
+    set "DO_INSTALL="
+    set /p "DO_INSTALL=%L_INSTALL_ASK%"
+    if /i "!DO_INSTALL!"=="y" (
+        call :log "Local files missing. User confirmed installation."
+        set "SKIP_DOWNLOAD=0"
+        exit /b 0
+    )
+    call :log "Local files missing. User declined installation."
+    set "EXIT_APP=1"
     exit /b 0
 )
 
@@ -313,10 +385,14 @@ exit /b 0
 exit /b 0
 
 :cleanup_services
+call :log "Cleaning up old services..."
 :: Determine current strategy before removing service / Определяю текущую стратегию перед удалением службы
 set "CURRENT_STRATEGY="
 for /f "tokens=2*" %%A in ('reg query "HKLM\System\CurrentControlSet\Services\zapret" /v zapret-discord-youtube 2^>nul') do set "CURRENT_STRATEGY=%%B"
-if defined CURRENT_STRATEGY set "CURRENT_STRATEGY=!CURRENT_STRATEGY!.bat"
+if defined CURRENT_STRATEGY (
+    set "CURRENT_STRATEGY=!CURRENT_STRATEGY!.bat"
+    call :log "Detected current strategy: !CURRENT_STRATEGY!"
+)
 
 :: Stop and remove old services / Останавливаю и удаляю старые службы
 sc stop "%SERVICE_NAME%" >nul 2>&1
@@ -328,6 +404,7 @@ sc stop "WinDivert" >nul 2>&1
 sc delete "WinDivert" >nul 2>&1
 sc stop "WinDivert14" >nul 2>&1
 sc delete "WinDivert14" >nul 2>&1
+call :log "Services stopped and removed."
 exit /b 0
 
 :create_backup
@@ -336,9 +413,11 @@ exit /b 0
         set "DO_BACKUP="
         set /p "DO_BACKUP=%L_BACKUP_ASK%"
         if /i "!DO_BACKUP!"=="y" (
+            call :log "User requested backup."
             if not exist "%ZAPRET_DIR%\backups" mkdir "%ZAPRET_DIR%\backups"
             set "BACKUP_FILE=%ZAPRET_DIR%\backups\!LOCAL_VERSION!.zip"
             echo %L_BACKUP_CREATING% "!BACKUP_FILE!"...
+            call :log "Creating backup: !BACKUP_FILE!"
             powershell -NoProfile -Command "Get-ChildItem -LiteralPath '%ZAPRET_DIR%' | Where-Object { $_.Name -ne 'backups' -and $_.Name -ne '%~nx0' } | Compress-Archive -DestinationPath '!BACKUP_FILE!' -Force"
 
             if not exist "!BACKUP_FILE!" (
@@ -346,16 +425,21 @@ exit /b 0
                 set "CHOICE="
                 set /p "CHOICE=%L_BACKUP_CONT%"
                 if /i not "!CHOICE!"=="y" (
+                    call :log "Backup creation failed. User cancelled update."
                     set "RC=1"
                     echo %L_BACKUP_CANCEL%
                     goto fail
                 )
+                call :log "Backup creation failed. User continued."
             ) else (
                 echo %L_BACKUP_OK%
+                call :log "Backup created successfully."
             )
 
-            :: Remove old backups (keep last 3 zip archives) / Удаляю старые бекапы (оставляю 3 последних zip архива)
+            REM Remove old backups (keep last 3 zip archives) / Удаляю старые бекапы (оставляю 3 последних zip архива)
             powershell -NoProfile -Command "$limit = 3; $path = '%ZAPRET_DIR%\backups'; if (Test-Path $path) { $items = Get-ChildItem -Path $path -Filter '*.zip' | Sort-Object CreationTime; if ($items.Count -gt $limit) { $items | Select-Object -First ($items.Count - $limit) | ForEach-Object { Write-Host 'Удаляю старый бекап: ' $_.Name; Remove-Item -LiteralPath $_.FullName -Force } } }"
+        ) else (
+            call :log "User declined backup."
         )
     )
 exit /b 0
@@ -363,6 +447,7 @@ exit /b 0
 :merge_lists
     :: Merge domain lists (keep user lists + add new ones) / Объединяю списки доменов (сохраняю пользовательские + добавляю новые)
     echo %L_MERGING%
+    call :log "Merging domain lists..."
     powershell -NoProfile -Command ^
         "$src = '!SRC_ROOT!\lists';" ^
         "$dst = '%ZAPRET_DIR%\lists';" ^
@@ -380,6 +465,7 @@ exit /b 0
         "        }" ^
         "    }" ^
         "}"
+    call :log "Domain lists merged."
 exit /b 0
 
 :copy_files
